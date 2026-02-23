@@ -106,7 +106,7 @@ resource "aws_instance" "tf_flask_ec2" {
 #---------------------------------------ecr-------------------------------------------------#
 resource "aws_ecr_repository" "tf_flask_ecr" {
   name = "tf-flask-ecr"
-
+  force_delete = true
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
