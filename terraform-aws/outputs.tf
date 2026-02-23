@@ -13,3 +13,7 @@ output "ec2_public_ip" {
 output "ecr_repository_url" {
   value = aws_ecr_repository.tf_flask_ecr.repository_url
 }
+#---------------------------------------github actions-------------------------------------------------#
+output "github_actions_role_arn" {
+  value = aws_iam_role.github_actions_role.arn
+}

@@ -1,0 +1,58 @@
+name: Deploy Flask App
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::272493677884:role/tf-flask-github-actions-role
+          aws-region: eu-central-1
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker Image
+        run: |
+          docker build -t tf-flask-ecr .
+          docker tag tf-flask-ecr:latest \
+          272493677884.dkr.ecr.eu-central-1.amazonaws.com/tf-flask-ecr:latest
+
+      - name: Push Docker Image
+        run: |
+          docker push \
+          272493677884.dkr.ecr.eu-central-1.amazonaws.com/tf-flask-ecr:latest
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            aws ecr get-login-password --region eu-central-1 \
+            | docker login --username AWS --password-stdin \
+            272493677884.dkr.ecr.eu-central-1.amazonaws.com
+
+            docker pull \
+            272493677884.dkr.ecr.eu-central-1.amazonaws.com/tf-flask-ecr:latest
+
+            docker stop flask-app || true
+            docker rm flask-app || true
+
+            docker run -d -p 5000:5000 --name flask-app \
+            272493677884.dkr.ecr.eu-central-1.amazonaws.com/tf-flask-ecr:latest
